@@ -40,7 +40,7 @@ jobs:
           python - <<EOF
           import pypandoc
           import yaml
-          import os  # Added missing import for os.listdir()
+          import os
 
           # Load the config file
           with open('resume.yml', 'r') as config_file:
@@ -51,16 +51,14 @@ jobs:
           docx_output = config['output']['word']
           font = config['output']['format']['font']
           font_size = config['output']['format']['font-size']
-          line_spacing = config['output']['format']['line-spacing']
           margins = config['output']['format']['margins']
 
-          # Pandoc arguments for PDF (via LaTeX)
+          # Pandoc arguments for PDF (simplified to avoid LaTeX errors)
           pdf_args = [
               '--pdf-engine=pdflatex',
               f'-V geometry:margin={margins}in',
               f'-V mainfont={font}',
-              f'-V fontsize={font_size}pt',
-              f'-V linespacing={line_spacing}'
+              f'-V fontsize={font_size}pt'
           ]
           pypandoc.convert_file(source_file, 'pdf', outputfile=pdf_output, extra_args=pdf_args)
 
