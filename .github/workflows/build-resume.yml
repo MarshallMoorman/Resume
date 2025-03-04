@@ -27,7 +27,7 @@ jobs:
       - name: Install Pandoc
         run: |
           sudo apt-get update
-          sudo apt-get install -y pandoc texlive-latex-base texlive-fonts-recommended
+          sudo apt-get install -y pandoc texlive-latex-base texlive-fonts-recommended texlive-latex-extra
 
       # Install Python dependencies
       - name: Install Python packages
@@ -49,15 +49,14 @@ jobs:
           source_file = config['source']
           pdf_output = config['output']['pdf']
           docx_output = config['output']['word']
-          font = config['output']['format']['font']
           font_size = config['output']['format']['font-size']
           margins = config['output']['format']['margins']
 
-          # Pandoc arguments for PDF (simplified to avoid LaTeX errors)
+          # Pandoc arguments for PDF (using helvet for Helvetica, close to Arial)
           pdf_args = [
               '--pdf-engine=pdflatex',
               f'-V geometry:margin={margins}in',
-              f'-V mainfont={font}',
+              '-V fontfamily=helvet',  # Use Helvetica instead of Arial
               f'-V fontsize={font_size}pt'
           ]
           pypandoc.convert_file(source_file, 'pdf', outputfile=pdf_output, extra_args=pdf_args)
