@@ -59,15 +59,26 @@ jobs:
               f'-V geometry:margin={margins}in',
               f'-V fontsize={font_size}pt'
           ]
-          pypandoc.convert_file(source_file, 'pdf', outputfile=pdf_output, extra_args=pdf_args)
+          try:
+              pypandoc.convert_file(source_file, 'pdf', outputfile=pdf_output, extra_args=pdf_args)
+              print(f"PDF conversion succeeded: {pdf_output}")
+          except Exception as e:
+              print(f"PDF conversion failed: {e}")
 
           # Pandoc arguments for DOCX
           docx_args = [
               '--reference-doc=custom-reference.docx' if 'custom-reference.docx' in os.listdir() else ''
           ]
-          pypandoc.convert_file(source_file, 'docx', outputfile=docx_output, extra_args=docx_args)
+          try:
+              pypandoc.convert_file(source_file, 'docx', outputfile=docx_output, extra_args=docx_args)
+              print(f"DOCX conversion succeeded: {docx_output}")
+          except Exception as e:
+              print(f"DOCX conversion failed: {e}")
 
-          print(f"Generated {pdf_output} and {docx_output}")
+          # Debug: List files in the directory
+          print("Files in current directory:")
+          for file in os.listdir():
+              print(f" - {file}")
           EOF
 
       # Upload the generated files as artifacts
