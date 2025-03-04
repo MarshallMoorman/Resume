@@ -8,6 +8,7 @@ on:
       - 'resume.md'                  # Trigger on changes to resume.md
       - 'resume.yml'                 # Trigger on changes to resume.yml
       - '.github/workflows/build-resume.yml'  # Trigger on changes to this workflow
+      - 'custom-reference.docx'      # Trigger on changes to reference file
 
 jobs:
   build:
@@ -33,7 +34,7 @@ jobs:
       # Install Python dependencies
       - name: Install Python packages
         run: |
-          pip install PyYAML
+          pip install pypandoc PyYAML
 
       # Generate PDF using Python script
       - name: Generate PDF File
@@ -72,18 +73,18 @@ jobs:
       # Generate DOCX using direct Pandoc command with resume.yml
       - name: Generate DOCX File
         run: |
-          python3 -c "import yaml; config = yaml.safe_load(open('resume.yml')); print(config['source'], config['output']['word'])" | {
-            read source_file docx_output
-            echo "Running Pandoc for DOCX conversion..."
-            pandoc "$source_file" -o "$docx_output" --verbose
-            if [ -f "$docx_output" ] && [ $(stat -c %s "$docx_output") -gt 0 ]; then
-              echo "DOCX generated at: $(pwd)/$docx_output (size: $(stat -c %s "$docx_output") bytes)"
-            else
-              echo "DOCX conversion failed or produced empty file"
-              ls -lh
-              exit 1
-            fi
-          }
+          echo "Extracting source and output from resume.yml..."
+          SOURCE_FILE=$(python3 -c "import yaml; print(yaml.safe_load(open('resume.yml'))['source'])")
+          DOCX_OUTPUT=$(python3 -c "import yaml; print(yaml.safe_load(open('resume.yml'))['output']['word'])")
+          echo "Running Pandoc for DOCX conversion: $SOURCE_FILE -> $DOCX_OUTPUT"
+          pandoc "$SOURCE_FILE" -o "$DOCX_OUTPUT" --verbose --reference-doc=custom-reference.docx || pandoc "$SOURCE_FILE" -o "$DOCX_OUTPUT" --verbose
+          if [ -f "$DOCX_OUTPUT" ] && [ $(stat -c %s "$DOCX_OUTPUT") -gt 0 ]; then
+            echo "DOCX generated at: $(pwd)/$DOCX_OUTPUT (size: $(stat -c %s "$DOCX_OUTPUT") bytes)"
+          else
+            echo "DOCX conversion failed or produced empty file"
+            ls -lh
+            exit 1
+          fi
 
       # Verify files exist
       - name: Verify Files Exist
