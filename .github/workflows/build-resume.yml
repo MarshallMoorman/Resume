@@ -5,8 +5,9 @@ on:
   workflow_dispatch: # Allows manual triggering
   push:
     paths:
-      - 'resume.md'   # Trigger on changes to resume.md
-      - 'resume.yml'  # Trigger on changes to resume.yml
+      - 'resume.md'                  # Trigger on changes to resume.md
+      - 'resume.yml'                 # Trigger on changes to resume.yml
+      - '.github/workflows/build-resume.yml'  # Trigger on changes to this workflow
 
 jobs:
   build:
@@ -23,11 +24,11 @@ jobs:
         with:
           python-version: '3.x'
 
-      # Install Pandoc and dependencies
+      # Install Pandoc and broader LaTeX dependencies
       - name: Install Pandoc
         run: |
           sudo apt-get update
-          sudo apt-get install -y pandoc texlive-latex-base texlive-fonts-recommended texlive-latex-extra
+          sudo apt-get install -y pandoc texlive-latex-base texlive-fonts-recommended texlive-latex-extra texlive-fonts-extra
 
       # Install Python dependencies
       - name: Install Python packages
@@ -52,11 +53,10 @@ jobs:
           font_size = config['output']['format']['font-size']
           margins = config['output']['format']['margins']
 
-          # Pandoc arguments for PDF (using helvet for Helvetica, close to Arial)
+          # Pandoc arguments for PDF (simplified, no fontfamily for now)
           pdf_args = [
               '--pdf-engine=pdflatex',
               f'-V geometry:margin={margins}in',
-              '-V fontfamily=helvet',  # Use Helvetica instead of Arial
               f'-V fontsize={font_size}pt'
           ]
           pypandoc.convert_file(source_file, 'pdf', outputfile=pdf_output, extra_args=pdf_args)
