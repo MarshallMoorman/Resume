@@ -35,8 +35,8 @@ jobs:
         run: |
           pip install pypandoc PyYAML
 
-      # Generate PDF and DOCX from Markdown using a Python script
-      - name: Generate Resume Files
+      # Generate PDF using Python script
+      - name: Generate PDF File
         run: |
           python - <<EOF
           import pypandoc
@@ -50,14 +50,12 @@ jobs:
 
           source_file = config['source']
           pdf_output = config['output']['pdf']
-          docx_output = config['output']['word']
           font_size = config['output']['format']['font-size']
           margins = config['output']['format']['margins']
 
           # Ensure we're working in the current directory
           current_dir = os.getcwd()
           pdf_path = os.path.join(current_dir, pdf_output)
-          docx_path = os.path.join(current_dir, docx_output)
 
           # Pandoc arguments for PDF
           pdf_args = [
@@ -74,35 +72,23 @@ jobs:
           except Exception as e:
               print(f"PDF conversion failed: {e}")
 
-          # Pandoc arguments for DOCX
-          docx_args = [
-              '--verbose',  # Keep for debugging
-              '--reference-doc=custom-reference.docx' if 'custom-reference.docx' in os.listdir() else ''
-          ]
-          try:
-              output = pypandoc.convert_file(source_file, 'docx', outputfile=docx_path, extra_args=docx_args)
-              print(f"DOCX conversion output: {output}")
-              if os.path.exists(docx_path) and os.path.getsize(docx_path) > 0:
-                  print(f"DOCX generated at: {docx_path} (size: {os.path.getsize(docx_path)} bytes)")
-              else:
-                  print(f"DOCX conversion succeeded but file empty or not found at: {docx_path}")
-          except Exception as e:
-              print(f"DOCX conversion failed: {e}")
-
-          # Brief delay to ensure files are fully written
-          time.sleep(1)
-
-          # Debug: List files and their sizes
-          print("Files in current directory:")
-          for file in os.listdir(current_dir):
-              file_path = os.path.join(current_dir, file)
-              if os.path.isfile(file_path):
-                  print(f" - {file} (size: {os.path.getsize(file_path)} bytes)")
-              else:
-                  print(f" - {file} (directory)")
+          time.sleep(1)  # Ensure file is written
           EOF
 
-      # Debug: Verify files before upload
+      # Generate DOCX using direct Pandoc command
+      - name: Generate DOCX File
+        run: |
+          echo "Running Pandoc directly for DOCX conversion..."
+          pandoc resume.md -o resume.docx --verbose
+          if [ -f "resume.docx" ] && [ $(stat -c %s resume.docx) -gt 0 ]; then
+            echo "DOCX generated at: $(pwd)/resume.docx (size: $(stat -c %s resume.docx) bytes)"
+          else
+            echo "DOCX conversion failed or produced empty file"
+            ls -lh
+            exit 1
+          fi
+
+      # Debug: List all files
       - name: Verify Files Exist
         run: |
           ls -lh
