@@ -74,9 +74,9 @@ jobs:
           except Exception as e:
               print(f"PDF conversion failed: {e}")
 
-          # Pandoc arguments for DOCX with verbose output
+          # Pandoc arguments for DOCX
           docx_args = [
-              '--verbose',  # Add detailed output for debugging
+              '--verbose',  # Keep for debugging
               '--reference-doc=custom-reference.docx' if 'custom-reference.docx' in os.listdir() else ''
           ]
           try:
@@ -102,28 +102,23 @@ jobs:
                   print(f" - {file} (directory)")
           EOF
 
-      # Upload PDF as raw file (alternative approach)
-      - name: Upload PDF Artifact
+      # Debug: Verify files before upload
+      - name: Verify Files Exist
         run: |
-          if [ -f "resume.pdf" ]; then
-            echo "Uploading resume.pdf as raw file"
-            gh release upload --clobber latest resume.pdf || gh release create --latest latest resume.pdf
-          else
-            echo "Error: resume.pdf not found"
-            exit 1
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ls -lh
+          if [ -f "resume.pdf" ]; then echo "PDF exists"; else echo "PDF missing"; exit 1; fi
+          if [ -f "resume.docx" ] && [ $(stat -c %s resume.docx) -gt 0 ]; then echo "DOCX exists and non-empty"; else echo "DOCX missing or empty"; exit 1; fi
 
-      # Upload DOCX as raw file (alternative approach)
+      # Upload PDF as artifact (ZIP for now)
+      - name: Upload PDF Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: resume-pdf
+          path: resume.pdf
+
+      # Upload DOCX as artifact (ZIP for now)
       - name: Upload DOCX Artifact
-        run: |
-          if [ -f "resume.docx" ] && [ $(stat -c %s resume.docx) -gt 0 ]; then
-            echo "Uploading resume.docx as raw file"
-            gh release upload --clobber latest resume.docx || gh release create --latest latest resume.docx
-          else
-            echo "Error: resume.docx not found or empty"
-            exit 1
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: resume-docx
+          path: resume.docx
