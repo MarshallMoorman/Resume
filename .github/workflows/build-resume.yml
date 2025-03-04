@@ -42,7 +42,7 @@ jobs:
           import pypandoc
           import yaml
           import os
-          from pathlib import Path
+          import time
 
           # Load the config file
           with open('resume.yml', 'r') as config_file:
@@ -68,7 +68,7 @@ jobs:
           try:
               pypandoc.convert_file(source_file, 'pdf', outputfile=pdf_path, extra_args=pdf_args)
               if os.path.exists(pdf_path):
-                  print(f"PDF generated at: {pdf_path}")
+                  print(f"PDF generated at: {pdf_path} (size: {os.path.getsize(pdf_path)} bytes)")
               else:
                   print(f"PDF conversion succeeded but file not found at: {pdf_path}")
           except Exception as e:
@@ -81,27 +81,37 @@ jobs:
           try:
               pypandoc.convert_file(source_file, 'docx', outputfile=docx_path, extra_args=docx_args)
               if os.path.exists(docx_path):
-                  print(f"DOCX generated at: {docx_path}")
+                  print(f"DOCX generated at: {docx_path} (size: {os.path.getsize(docx_path)} bytes)")
               else:
                   print(f"DOCX conversion succeeded but file not found at: {docx_path}")
           except Exception as e:
               print(f"DOCX conversion failed: {e}")
 
-          # Debug: List files in the directory
+          # Brief delay to ensure files are fully written
+          time.sleep(1)
+
+          # Debug: List files and their sizes
           print("Files in current directory:")
           for file in os.listdir(current_dir):
-              print(f" - {file}")
+              file_path = os.path.join(current_dir, file)
+              if os.path.isfile(file_path):
+                  print(f" - {file} (size: {os.path.getsize(file_path)} bytes)")
+              else:
+                  print(f" - {file} (directory)")
           EOF
 
-      # Upload the generated files as artifacts
+      # Upload PDF as raw file
       - name: Upload PDF Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: resume-pdf
+          name: resume.pdf  # Name without "-pdf" suffix, matches raw file
           path: resume.pdf
+          compression-level: 0  # No compression, raw file
 
+      # Upload DOCX as raw file
       - name: Upload DOCX Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: resume-docx
+          name: resume.docx  # Name without "-docx" suffix, matches raw file
           path: resume.docx
+          compression-level: 0  # No compression, raw file
