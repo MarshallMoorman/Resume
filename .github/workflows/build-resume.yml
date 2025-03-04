@@ -1,0 +1,86 @@
+name: Build Resume
+
+# Trigger the workflow manually or on push to specific files
+on:
+  workflow_dispatch: # Allows manual triggering
+  push:
+    paths:
+      - 'resume.md'   # Trigger on changes to resume.md
+      - 'resume.yml'  # Trigger on changes to resume.yml
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      # Install Pandoc and dependencies
+      - name: Install Pandoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pandoc texlive-latex-base texlive-fonts-recommended
+
+      # Install Python dependencies
+      - name: Install Python packages
+        run: |
+          pip install pypandoc PyYAML
+
+      # Generate PDF and DOCX from Markdown using a Python script
+      - name: Generate Resume Files
+        run: |
+          python - <<EOF
+          import pypandoc
+          import yaml
+
+          # Load the config file
+          with open('resume.yml', 'r') as config_file:
+              config = yaml.safe_load(config_file)
+
+          source_file = config['source']
+          pdf_output = config['output']['pdf']
+          docx_output = config['output']['word']
+          font = config['output']['format']['font']
+          font_size = config['output']['format']['font-size']
+          line_spacing = config['output']['format']['line-spacing']
+          margins = config['output']['format']['margins']
+
+          # Pandoc arguments for PDF (via LaTeX)
+          pdf_args = [
+              '--pdf-engine=pdflatex',
+              f'-V geometry:margin={margins}in',
+              f'-V mainfont={font}',
+              f'-V fontsize={font_size}pt',
+              f'-V linespacing={line_spacing}'
+          ]
+          pypandoc.convert_file(source_file, 'pdf', outputfile=pdf_output, extra_args=pdf_args)
+
+          # Pandoc arguments for DOCX
+          docx_args = [
+              '--reference-doc=custom-reference.docx' if 'custom-reference.docx' in os.listdir() else ''
+          ]
+          pypandoc.convert_file(source_file, 'docx', outputfile=docx_output, extra_args=docx_args)
+
+          print(f"Generated {pdf_output} and {docx_output}")
+          EOF
+
+      # Upload the generated files as artifacts
+      - name: Upload PDF Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: resume-pdf
+          path: resume.pdf
+
+      - name: Upload DOCX Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: resume-docx
+          path: resume.docx

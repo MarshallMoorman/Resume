@@ -1,0 +1,10 @@
+# resume.yml
+source: resume.md
+output:
+  format:
+    font: arial
+    font-size: 11
+    line-spacing: 1.2
+    margins: 1 # in inches
+  pdf: resume.pdf
+  word: resume.docx
