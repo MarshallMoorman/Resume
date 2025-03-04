@@ -33,18 +33,17 @@ jobs:
       # Install Python dependencies
       - name: Install Python packages
         run: |
-          pip install pypandoc PyYAML
+          pip install PyYAML
 
       # Generate PDF using Python script
       - name: Generate PDF File
         run: |
-          python - <<EOF
+          python3 - <<EOF
           import pypandoc
           import yaml
           import os
           import time
 
-          # Load the config file
           with open('resume.yml', 'r') as config_file:
               config = yaml.safe_load(config_file)
 
@@ -53,11 +52,9 @@ jobs:
           font_size = config['output']['format']['font-size']
           margins = config['output']['format']['margins']
 
-          # Ensure we're working in the current directory
           current_dir = os.getcwd()
           pdf_path = os.path.join(current_dir, pdf_output)
 
-          # Pandoc arguments for PDF
           pdf_args = [
               '--pdf-engine=pdflatex',
               f'-V geometry:margin={margins}in',
@@ -65,46 +62,40 @@ jobs:
           ]
           try:
               pypandoc.convert_file(source_file, 'pdf', outputfile=pdf_path, extra_args=pdf_args)
-              if os.path.exists(pdf_path):
-                  print(f"PDF generated at: {pdf_path} (size: {os.path.getsize(pdf_path)} bytes)")
-              else:
-                  print(f"PDF conversion succeeded but file not found at: {pdf_path}")
+              print(f"PDF generated at: {pdf_path} (size: {os.path.getsize(pdf_path)} bytes)")
           except Exception as e:
               print(f"PDF conversion failed: {e}")
 
-          time.sleep(1)  # Ensure file is written
+          time.sleep(1)
           EOF
 
-      # Generate DOCX using direct Pandoc command
+      # Generate DOCX using direct Pandoc command with resume.yml
       - name: Generate DOCX File
         run: |
-          echo "Running Pandoc directly for DOCX conversion..."
-          pandoc resume.md -o resume.docx --verbose
-          if [ -f "resume.docx" ] && [ $(stat -c %s resume.docx) -gt 0 ]; then
-            echo "DOCX generated at: $(pwd)/resume.docx (size: $(stat -c %s resume.docx) bytes)"
-          else
-            echo "DOCX conversion failed or produced empty file"
-            ls -lh
-            exit 1
-          fi
+          python3 -c "import yaml; config = yaml.safe_load(open('resume.yml')); print(config['source'], config['output']['word'])" | {
+            read source_file docx_output
+            echo "Running Pandoc for DOCX conversion..."
+            pandoc "$source_file" -o "$docx_output" --verbose
+            if [ -f "$docx_output" ] && [ $(stat -c %s "$docx_output") -gt 0 ]; then
+              echo "DOCX generated at: $(pwd)/$docx_output (size: $(stat -c %s "$docx_output") bytes)"
+            else
+              echo "DOCX conversion failed or produced empty file"
+              ls -lh
+              exit 1
+            fi
+          }
 
-      # Debug: List all files
+      # Verify files exist
       - name: Verify Files Exist
         run: |
           ls -lh
           if [ -f "resume.pdf" ]; then echo "PDF exists"; else echo "PDF missing"; exit 1; fi
           if [ -f "resume.docx" ] && [ $(stat -c %s resume.docx) -gt 0 ]; then echo "DOCX exists and non-empty"; else echo "DOCX missing or empty"; exit 1; fi
 
-      # Upload PDF as artifact (ZIP for now)
-      - name: Upload PDF Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: resume-pdf
-          path: resume.pdf
-
-      # Upload DOCX as artifact (ZIP for now)
-      - name: Upload DOCX Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: resume-docx
-          path: resume.docx
+      # Upload raw files to a GitHub release
+      - name: Upload Raw Files to Release
+        run: |
+          gh release create latest --title "Latest Resume" --notes "Auto-generated resume files" --draft || true
+          gh release upload latest resume.pdf resume.docx --clobber
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
