@@ -42,6 +42,7 @@ jobs:
           import pypandoc
           import yaml
           import os
+          from pathlib import Path
 
           # Load the config file
           with open('resume.yml', 'r') as config_file:
@@ -53,15 +54,23 @@ jobs:
           font_size = config['output']['format']['font-size']
           margins = config['output']['format']['margins']
 
-          # Pandoc arguments for PDF (simplified, no fontfamily for now)
+          # Ensure we're working in the current directory
+          current_dir = os.getcwd()
+          pdf_path = os.path.join(current_dir, pdf_output)
+          docx_path = os.path.join(current_dir, docx_output)
+
+          # Pandoc arguments for PDF
           pdf_args = [
               '--pdf-engine=pdflatex',
               f'-V geometry:margin={margins}in',
               f'-V fontsize={font_size}pt'
           ]
           try:
-              pypandoc.convert_file(source_file, 'pdf', outputfile=pdf_output, extra_args=pdf_args)
-              print(f"PDF conversion succeeded: {pdf_output}")
+              pypandoc.convert_file(source_file, 'pdf', outputfile=pdf_path, extra_args=pdf_args)
+              if os.path.exists(pdf_path):
+                  print(f"PDF generated at: {pdf_path}")
+              else:
+                  print(f"PDF conversion succeeded but file not found at: {pdf_path}")
           except Exception as e:
               print(f"PDF conversion failed: {e}")
 
@@ -70,14 +79,17 @@ jobs:
               '--reference-doc=custom-reference.docx' if 'custom-reference.docx' in os.listdir() else ''
           ]
           try:
-              pypandoc.convert_file(source_file, 'docx', outputfile=docx_output, extra_args=docx_args)
-              print(f"DOCX conversion succeeded: {docx_output}")
+              pypandoc.convert_file(source_file, 'docx', outputfile=docx_path, extra_args=docx_args)
+              if os.path.exists(docx_path):
+                  print(f"DOCX generated at: {docx_path}")
+              else:
+                  print(f"DOCX conversion succeeded but file not found at: {docx_path}")
           except Exception as e:
               print(f"DOCX conversion failed: {e}")
 
           # Debug: List files in the directory
           print("Files in current directory:")
-          for file in os.listdir():
+          for file in os.listdir(current_dir):
               print(f" - {file}")
           EOF
 
