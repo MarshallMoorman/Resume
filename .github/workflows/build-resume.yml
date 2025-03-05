@@ -1,8 +1,7 @@
 name: Build Resume
 
-# Trigger the workflow manually or on push to specific files
 on:
-  workflow_dispatch: # Allows manual triggering
+  workflow_dispatch:
   push:
     paths:
       - 'resume.md'
@@ -14,33 +13,28 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # Explicitly grant write access for releases
+      contents: write
 
     steps:
-      # Checkout the repository with the latest commit
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           ref: main
 
-      # Set up Python
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.x'
 
-      # Install Pandoc and LaTeX dependencies
       - name: Install Pandoc
         run: |
           sudo apt-get update
           sudo apt-get install -y pandoc texlive-latex-base texlive-fonts-recommended texlive-latex-extra texlive-fonts-extra
 
-      # Install Python dependencies
       - name: Install Python packages
         run: |
           pip install pypandoc PyYAML
 
-      # Generate PDF
       - name: Generate PDF File
         run: |
           python3 - <<EOF
@@ -62,7 +56,7 @@ jobs:
 
           pdf_args = [
               '--pdf-engine=pdflatex',
-              f'-V geometry:margin={margins}in',
+              f'-V geometry:letterpaper,margin={margins}in',  # Explicit page size
               f'-V fontsize={font_size}pt'
           ]
           try:
@@ -74,7 +68,6 @@ jobs:
           time.sleep(1)
           EOF
 
-      # Generate DOCX with custom reference
       - name: Generate DOCX File
         run: |
           echo "Extracting source and output from resume.yml..."
@@ -95,22 +88,20 @@ jobs:
             exit 1
           fi
 
-      # Verify files exist
       - name: Verify Files Exist
         run: |
           ls -lh
           if [ -f "resume.pdf" ]; then echo "PDF exists"; else echo "PDF missing"; exit 1; fi
           if [ -f "resume.docx" ] && [ $(stat -c %s resume.docx) -gt 0 ]; then echo "DOCX exists and non-empty"; else echo "DOCX missing or empty"; exit 1; fi
 
-      # Create and upload release with assets in one step
       - name: Create and Upload Release
         run: |
           echo "Creating release and uploading files..."
           gh release create latest \
             --title "Latest Resume" \
             --notes "Auto-generated resume files" \
-            resume.pdf resume.docx \
-            --latest
+            --latest \
+            resume.pdf resume.docx
           if [ $? -eq 0 ]; then
             echo "Release created and files uploaded successfully"
           else
