@@ -13,13 +13,15 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Explicitly grant write access for releases
 
     steps:
       # Checkout the repository with the latest commit
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: main  # Ensure we get the latest main branch
+          ref: main
 
       # Set up Python
       - name: Set up Python
@@ -100,18 +102,18 @@ jobs:
           if [ -f "resume.pdf" ]; then echo "PDF exists"; else echo "PDF missing"; exit 1; fi
           if [ -f "resume.docx" ] && [ $(stat -c %s resume.docx) -gt 0 ]; then echo "DOCX exists and non-empty"; else echo "DOCX missing or empty"; exit 1; fi
 
-      # Upload raw files to a GitHub release with retry
+      # Upload raw files to a GitHub release
       - name: Upload Raw Files to Release
         run: |
-          for attempt in {1..3}; do
-            echo "Attempt $attempt to upload files..."
-            gh release create latest --title "Latest Resume" --notes "Auto-generated resume files" --draft || true
-            gh release upload latest resume.pdf resume.docx --clobber && break
-            echo "Upload failed, retrying in 5 seconds..."
-            sleep 5
-          done
-          if [ $attempt -eq 3 ]; then
-            echo "Upload failed after 3 attempts"
+          echo "Creating or updating release..."
+          gh release create latest --title "Latest Resume" --notes "Auto-generated resume files" --draft || true
+          sleep 5  # Wait for release to propagate
+          echo "Uploading files..."
+          gh release upload latest resume.pdf resume.docx --clobber
+          if [ $? -eq 0 ]; then
+            echo "Files uploaded successfully"
+          else
+            echo "Upload failed"
             exit 1
           fi
         env:
