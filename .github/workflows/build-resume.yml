@@ -102,18 +102,19 @@ jobs:
           if [ -f "resume.pdf" ]; then echo "PDF exists"; else echo "PDF missing"; exit 1; fi
           if [ -f "resume.docx" ] && [ $(stat -c %s resume.docx) -gt 0 ]; then echo "DOCX exists and non-empty"; else echo "DOCX missing or empty"; exit 1; fi
 
-      # Upload raw files to a GitHub release
-      - name: Upload Raw Files to Release
+      # Create and upload release with assets in one step
+      - name: Create and Upload Release
         run: |
-          echo "Creating or updating release..."
-          gh release create latest --title "Latest Resume" --notes "Auto-generated resume files" --draft || true
-          sleep 5  # Wait for release to propagate
-          echo "Uploading files..."
-          gh release upload latest resume.pdf resume.docx --clobber
+          echo "Creating release and uploading files..."
+          gh release create latest \
+            --title "Latest Resume" \
+            --notes "Auto-generated resume files" \
+            resume.pdf resume.docx \
+            --latest
           if [ $? -eq 0 ]; then
-            echo "Files uploaded successfully"
+            echo "Release created and files uploaded successfully"
           else
-            echo "Upload failed"
+            echo "Release creation or upload failed"
             exit 1
           fi
         env:
