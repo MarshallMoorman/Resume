@@ -5,19 +5,21 @@ on:
   workflow_dispatch: # Allows manual triggering
   push:
     paths:
-      - 'resume.md'                  # Trigger on changes to resume.md
-      - 'resume.yml'                 # Trigger on changes to resume.yml
-      - '.github/workflows/build-resume.yml'  # Trigger on changes to this workflow
-      - 'custom-reference.docx'      # Trigger on changes to reference file
+      - 'resume.md'
+      - 'resume.yml'
+      - '.github/workflows/build-resume.yml'
+      - 'custom-reference.docx'
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout the repository
+      # Checkout the repository with the latest commit
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: main  # Ensure we get the latest main branch
 
       # Set up Python
       - name: Set up Python
@@ -25,7 +27,7 @@ jobs:
         with:
           python-version: '3.x'
 
-      # Install Pandoc and broader LaTeX dependencies
+      # Install Pandoc and LaTeX dependencies
       - name: Install Pandoc
         run: |
           sudo apt-get update
@@ -36,7 +38,7 @@ jobs:
         run: |
           pip install pypandoc PyYAML
 
-      # Generate PDF using Python script
+      # Generate PDF
       - name: Generate PDF File
         run: |
           python3 - <<EOF
@@ -70,14 +72,19 @@ jobs:
           time.sleep(1)
           EOF
 
-      # Generate DOCX using direct Pandoc command with resume.yml
+      # Generate DOCX with custom reference
       - name: Generate DOCX File
         run: |
           echo "Extracting source and output from resume.yml..."
           SOURCE_FILE=$(python3 -c "import yaml; print(yaml.safe_load(open('resume.yml'))['source'])")
           DOCX_OUTPUT=$(python3 -c "import yaml; print(yaml.safe_load(open('resume.yml'))['output']['word'])")
           echo "Running Pandoc for DOCX conversion: $SOURCE_FILE -> $DOCX_OUTPUT"
-          pandoc "$SOURCE_FILE" -o "$DOCX_OUTPUT" --verbose --reference-doc=custom-reference.docx || pandoc "$SOURCE_FILE" -o "$DOCX_OUTPUT" --verbose
+          if [ -f "custom-reference.docx" ]; then
+            pandoc "$SOURCE_FILE" -o "$DOCX_OUTPUT" --verbose --reference-doc=custom-reference.docx
+          else
+            echo "Warning: custom-reference.docx not found, using default styling"
+            pandoc "$SOURCE_FILE" -o "$DOCX_OUTPUT" --verbose
+          fi
           if [ -f "$DOCX_OUTPUT" ] && [ $(stat -c %s "$DOCX_OUTPUT") -gt 0 ]; then
             echo "DOCX generated at: $(pwd)/$DOCX_OUTPUT (size: $(stat -c %s "$DOCX_OUTPUT") bytes)"
           else
@@ -93,10 +100,19 @@ jobs:
           if [ -f "resume.pdf" ]; then echo "PDF exists"; else echo "PDF missing"; exit 1; fi
           if [ -f "resume.docx" ] && [ $(stat -c %s resume.docx) -gt 0 ]; then echo "DOCX exists and non-empty"; else echo "DOCX missing or empty"; exit 1; fi
 
-      # Upload raw files to a GitHub release
+      # Upload raw files to a GitHub release with retry
       - name: Upload Raw Files to Release
         run: |
-          gh release create latest --title "Latest Resume" --notes "Auto-generated resume files" --draft || true
-          gh release upload latest resume.pdf resume.docx --clobber
+          for attempt in {1..3}; do
+            echo "Attempt $attempt to upload files..."
+            gh release create latest --title "Latest Resume" --notes "Auto-generated resume files" --draft || true
+            gh release upload latest resume.pdf resume.docx --clobber && break
+            echo "Upload failed, retrying in 5 seconds..."
+            sleep 5
+          done
+          if [ $attempt -eq 3 ]; then
+            echo "Upload failed after 3 attempts"
+            exit 1
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
